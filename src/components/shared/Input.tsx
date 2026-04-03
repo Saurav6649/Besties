@@ -1,7 +1,7 @@
 import type { FC } from "react";
 
 interface InputInterface {
-  type?: "text" | "password" | "file"
+  type?: "text" | "password" | "file" | "number"
   name: string;
   placeholder?: string;
 }

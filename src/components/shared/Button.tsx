@@ -27,6 +27,9 @@ interface ButtonInterface {
     | "success"
     | "dark"
     | "info";
+  key?: string | number;
+  loading?: boolean;
+  size?:string
 }
 
 const Button: FC<ButtonInterface> = ({
@@ -34,10 +37,15 @@ const Button: FC<ButtonInterface> = ({
   icon,
   onClick,
   type = "primary",
+  key = 0,
+  loading,
+  size = "lg"
 }) => {
+  if (loading) return <button className="text-gray-500" disabled> <i className="fa fa-spinner fa-spin"></i>  Loading</button>;
+
   return (
-    <button className={ButtonModal[type]} onClick={onClick}>
-      {icon && <i className={`ri-${icon} mr-3`}></i>}
+    <button key={key} className={ButtonModal[type] || `${size === "lg" ? "px-4 py-3 " : "px-3 py-2"} rounded-full`} onClick={onClick}>
+      {icon && <i className={`ri-${icon} mr-2`}></i>}
       {children}
     </button>
   );

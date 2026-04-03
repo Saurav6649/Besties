@@ -1,10 +1,32 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "animate.css";
-import Form from "./shared/Form";
+import Form, { type FormDataType } from "./shared/Form";
 import Input from "./shared/Input";
 import Button from "./shared/Button";
+import HttpInterceptor from "./lib/HttpInterceptor";
+import { toast } from "react-toastify";
+import { Catcherr } from "./lib/CatchError";
+import { useContext } from "react";
+import Context from "../Context";
 
 const Login = () => {
+  const { setSession } = useContext(Context);
+
+  const navigate = useNavigate();
+  const login = async (values: FormDataType) => {
+    try {
+      const { data } = await HttpInterceptor.post("/auth/login", values);
+      setSession(data.user); // 🔥 IMPORTANT (backend ke according)
+
+      toast.success(data.message);
+
+      navigate("/app");
+      
+    } catch (err: unknown) {
+      Catcherr(err);
+    }
+  };
+
   return (
     <div className="bg-slate-100 w-full h-screen flex items-center justify-center">
       <div className="w-7/12 flex justify-between bg-white shadow border border-gray-100 rounded-lg overflow-hidden">
@@ -25,10 +47,7 @@ const Login = () => {
           </div>
 
           {/* Form */}
-          <Form
-            className="flex flex-col gap-5 w-full"
-            onValue={(v) => console.log(v)}
-          >
+          <Form className="flex flex-col gap-5 w-full" onValue={login}>
             {/* Email */}
             <Input name="email" type="text" placeholder="Email Id" />
 

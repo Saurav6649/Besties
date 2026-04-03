@@ -1,9 +1,35 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
 import Avatar from "../shared/Avatar";
 import Card from "../shared/Card";
-import { useState } from "react";
+import Context from "../../Context";
+import { useContext, useEffect, useState } from "react";
+import HttpInterceptor from "../lib/HttpInterceptor";
+import { toast } from "react-toastify";
+import { v4 as uuid } from "uuid";
+import useSWR, { mutate } from "swr";
+import Fetcher from "../lib/Fetcher";
+import { Catcherr } from "../lib/CatchError";
+import Suggestedfriends from "./Suggestedfriends";
+import FriendRequest from "./FriendRequest";
 
 const Layout = () => {
+  const EightMinInMs = 8 * 60 * 60 * 1000;
+
+  const { error } = useSWR("/auth/refreshToken", Fetcher, {
+    refreshInterval: EightMinInMs,
+    shouldRetryOnError: false,
+  });
+
+  const { session, setSession } = useContext(Context);
+  // console.log(session);
+
   const { pathname } = useLocation();
   const menus = [
     {
@@ -39,6 +65,63 @@ const Layout = () => {
     return finalPath;
   };
 
+  const handleProfile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.click();
+    input.onchange = async () => {
+      if (!input.files) return;
+
+      const file = input.files[0];
+
+      const extension = file.type.split("/")[1];
+      const path = `profile-pictures/${uuid()}.${extension}`;
+      const payload = {
+        path,
+        type: file.type,
+        status: "public-read",
+      };
+      try {
+        const options = {
+          headers: {
+            "Content-Type": file.type,
+          },
+        };
+        const { data } = await HttpInterceptor.post("/storage/upload", payload);
+        await HttpInterceptor.put(data.url, file, options);
+        const { data: user } = await HttpInterceptor.put(
+          "/auth/profile-picture",
+          { path },
+        );
+
+        if (!session) return;
+
+        setSession({ ...session, image: user.image });
+        mutate("/auth/refreshToken");
+
+        toast.success("Uploaded Successfully");
+      } catch (err) {
+        console.log(err);
+      }
+    };
+  };
+
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await HttpInterceptor.post("/auth/logout");
+      navigate("/login");
+    } catch (err) {
+      Catcherr(err);
+    }
+  };
+
+  useEffect(() => {
+    if (error) handleLogout();
+  }, [error]);
+
   return (
     <div className="min-h-screen flex ">
       <aside
@@ -47,14 +130,21 @@ const Layout = () => {
       >
         <div className="h-full rounded-2xl p-2 " style={sidebarStyle}>
           <div>
-            <Avatar
-              title={`${leftSidebarWidth === collapseWidth ? "" : "Saurav"}`}
-              size={`${leftSidebarWidth === collapseWidth ? "md" : "lg"}`}
-              subtitle="FullStack Developer "
-              img="/Images/Profile.jpg"
-              titleColor="#ffffff"
-              subtitleColor="#f5f5f5"
-            />
+            <div>
+              {session && (
+                <Avatar
+                  title={`${
+                    leftSidebarWidth === collapseWidth ? "" : session.fullname
+                  }`}
+                  size={leftSidebarWidth === collapseWidth ? "md" : "lg"}
+                  subtitle={`${session.email}`}
+                  img={session.image || "/Images/Profile.jpg"}
+                  titleColor="#ffffff"
+                  subtitleColor="#f5f5f5"
+                  onClick={handleProfile}
+                />
+              )}
+            </div>
 
             <div className="flex flex-col gap-6 mt-10">
               {menus.map((item) => (
@@ -82,7 +172,10 @@ const Layout = () => {
                 </NavLink>
               ))}
 
-              <button className="flex items-center gap-3 fixed bottom-7  px-6 py-2 rounded-full transition-all duration-200  text-gray-200 hover:bg-white/10 hover:text-white">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 fixed bottom-7  px-6 py-2 rounded-full transition-all duration-200  text-gray-200 hover:bg-white/10 hover:text-white"
+              >
                 <i className={`ri-logout-circle-r-line text-lg`}></i>
                 <p
                   className={`text-sm ${
@@ -134,7 +227,7 @@ const Layout = () => {
       {/* Right Sidebar */}
       <aside className="h-[590px] flex flex-col gap-4  bg-white shadow w-[250px] rounded-2xl fixed top-0 right-0 mt-4 ">
         {/* Top card — Suggested */}
-        <div className="w-full border border-gray-100 rounded-lg h-[200px] overflow-auto scrollbar-hide">
+        {/* <div className="w-full border border-gray-100 rounded-lg h-[200px] overflow-auto scrollbar-hide">
           <Card title="Suggested">
             <div className="space-y-5">
               {Array(10)
@@ -161,7 +254,10 @@ const Layout = () => {
                 ))}
             </div>
           </Card>
-        </div>
+        </div> */}
+
+        <Suggestedfriends />
+        <FriendRequest/>
 
         {/* Bottom card — Add Friends */}
         <div className="flex-1 overflow-auto scrollbar-hide">

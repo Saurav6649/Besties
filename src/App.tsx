@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import 'font-awesome/css/font-awesome.min.css'
 import Home from "./components/Home";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -10,22 +11,43 @@ import Friends from "./components/app/Friends";
 import Videochat from "./components/app/Videochat";
 import Chat from "./components/app/Chat";
 import Voicecall from "./components/app/Voicecall";
+import Notfound from "./components/Notfound";
+import { ToastContainer } from "react-toastify";
+import Guard from "./guards/Guard";
+import { useState } from "react";
+import Context, { type SessionType } from "./Context";
+import RedirectGuard from "./guards/RedirectGuard";
 
 const App = () => {
+  const [session, setSession] = useState<SessionType | null | false>(null);
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/app" element={<Layout />}>
-        <Route path="" element={<Dashboard />} />
-        <Route path="posts" element={<Post />} />
-        <Route path="friends" element={<Friends />} />
-        <Route path="video-chat" element={<Videochat />} />
-        <Route path="chat" element={<Chat />} />
-        <Route path="voice-call" element={<Voicecall />} />
-      </Route>
-    </Routes>
+    <>
+      <Context.Provider value={{ session, setSession }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route element={<RedirectGuard />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+          </Route>
+
+          <Route element={<Guard />}>
+            <Route path="/app" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="posts" element={<Post />} />
+              <Route path="friends" element={<Friends />} />
+              <Route path="video-chat" element={<Videochat />} />
+              <Route path="chat" element={<Chat />} />
+              <Route path="voice-call" element={<Voicecall />} />
+            </Route>
+          </Route>
+
+          <Route path="*" element={<Notfound />} />
+        </Routes>
+
+        {/* ✅ Yaha rakho */}
+        <ToastContainer />
+      </Context.Provider>
+    </>
   );
 };
 

@@ -2,11 +2,12 @@ import type { FC, ReactNode } from "react";
 
 interface AvatarInterface {
   title?: string | null;
-  subtitle?: ReactNode
+  subtitle?: ReactNode;
   img?: string;
   titleColor?: string;
   subtitleColor?: string;
   size?: "lg" | "md";
+  onClick?: () => void;
 }
 
 const Avatar: FC<AvatarInterface> = ({
@@ -15,12 +16,14 @@ const Avatar: FC<AvatarInterface> = ({
   img,
   titleColor = "#ffffff",
   subtitleColor = "#f5f5f5",
-  size='lg',
+  size = "lg",
+  onClick,
 }) => {
   return (
     <div className="flex items-center justify-center  gap-3">
       {img && (
         <img
+          onClick={onClick}
           className={`${size === "lg" ? "h-12 w-12" : "h-8 w-8"} rounded-full`}
           src={img}
           alt=""
@@ -29,13 +32,13 @@ const Avatar: FC<AvatarInterface> = ({
       {title && subtitle && (
         <div>
           <h1
-            className={`font-medium ${size === 'lg'?'text-[15px]/6':'text-[12px]/4'}`}
+            className={`font-medium capitalize ${size === "lg" ? "text-[15px]/6" : "text-[12px]/4"}`}
             style={{ color: titleColor }}
           >
             {title}
           </h1>
           <div
-            className={`text-gray-300 ${size === 'lg'?'text-xs':'text-[10px]'}`}
+            className={`text-gray-300 ${size === "lg" ? "text-xs" : "text-[10px]"}`}
             style={{ color: subtitleColor }}
           >
             {subtitle}

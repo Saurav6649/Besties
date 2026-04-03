@@ -2,7 +2,7 @@ import type { FC, ReactElement, ReactNode } from "react";
 
 interface CardInterface {
   title?: ReactNode;
-  children?: ReactElement;
+  children?: ReactNode;
   footer?: ReactElement;
   divider?: boolean;
   border?: boolean;
