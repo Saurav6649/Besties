@@ -3,9 +3,9 @@ import React, { type FC, type FormEvent, type ReactNode } from "react";
 export type FormDataType = Record<string, string>;
 
 interface FormInterface {
-  className: string;
+  className?: string;
   children: ReactNode;
-  onValue: (value: FormDataType) => void;
+  onValue?: (value: FormDataType) => void;
 }
 
 const Form: FC<FormInterface> = ({ className, children, onValue }) => {
@@ -19,7 +19,7 @@ const Form: FC<FormInterface> = ({ className, children, onValue }) => {
       data[key] = value.toString();
     });
 
-    onValue(data);
+    if (onValue) onValue(data);
   };
   return (
     <form onSubmit={handleSubmit} className={className}>

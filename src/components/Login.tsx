@@ -29,12 +29,12 @@ const Login = () => {
 
   return (
     <div className="bg-slate-100 w-full h-screen flex items-center justify-center">
-      <div className="w-7/12 flex justify-between bg-white shadow border border-gray-100 rounded-lg overflow-hidden">
+      <div className="w-7/12 flex flex-col lg:flex-row justify-between bg-white shadow border border-gray-100 rounded-lg overflow-hidden">
         {/* Left Image */}
         <img
           src="/Images/image.jpg"
           alt="login"
-          className="w-[50%]  h-full object-cover animate__animated animate__fadeInRight animate__faster"
+          className="lg:w-[50%] w-full lg:block hidden object-cover animate__animated animate__fadeInRight animate__faster"
         />
 
         {/* Right Content */}

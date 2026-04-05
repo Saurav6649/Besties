@@ -64,7 +64,7 @@ const Signup = () => {
         <img
           src="/Images/image.jpg"
           alt="signup"
-          className="w-[50%] h-full object-cover animate__animated animate__fadeInLeft animate__faster"
+          className="w-[50%] lg:block hidden h-full object-cover animate__animated animate__fadeInLeft animate__faster"
         />
       </div>
     </div>

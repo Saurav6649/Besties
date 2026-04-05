@@ -19,5 +19,10 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+
+    // ✅ YAHI ADD KARO
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
 ])

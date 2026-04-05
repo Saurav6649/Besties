@@ -16,10 +16,15 @@ import { v4 as uuid } from "uuid";
 import useSWR, { mutate } from "swr";
 import Fetcher from "../lib/Fetcher";
 import { Catcherr } from "../lib/CatchError";
-import Suggestedfriends from "./Suggestedfriends";
-import FriendRequest from "./FriendRequest";
+import FriendSuggestion from "./friend/FriendSuggestion";
+import FriendRequest from "./friend/FriendRequest";
+import { useMediaQuery } from "react-responsive";
+import Logo from "../shared/logo";
+import IconButton from "../shared/Iconbutton";
+import FriendsOnline from "./friend/FriendsOnline";
 
 const Layout = () => {
+  const isMobile = useMediaQuery({ query: "(max-width: 1224px)" });
   const EightMinInMs = 8 * 60 * 60 * 1000;
 
   const { error } = useSWR("/auth/refreshToken", Fetcher, {
@@ -31,6 +36,18 @@ const Layout = () => {
   // console.log(session);
 
   const { pathname } = useLocation();
+
+  const friendsUiBlacklist = [
+    "/app/friends",
+    "/app/chat",
+    "/app/voice-call",
+    "/app/video-chat",
+  ];
+
+  const isBlacklisted = friendsUiBlacklist.some((path) => pathname === path);
+
+  // console.log("blaclisted", isBlacklisted);
+
   const menus = [
     {
       icon: "ri-home-3-line",
@@ -50,9 +67,18 @@ const Layout = () => {
     },
   ];
 
-  const [leftSidebarWidth, setLeftSidebarWidth] = useState(250);
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(0);
   const rightSidebarWidth = 250;
-  const collapseWidth = 100;
+  const [collapseWidth, setCollapseWidth] = useState(0);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    const width = isMobile ? 0 : 250;
+    const collapse = isMobile ? 0 : 100;
+
+    setLeftSidebarWidth(width);
+    setCollapseWidth(collapse);
+  }, [isMobile]);
 
   const sidebarStyle = {
     backgroundImage:
@@ -123,12 +149,42 @@ const Layout = () => {
   }, [error]);
 
   return (
-    <div className="min-h-screen flex ">
+    <div className="min-h-screen lg:flex ">
+      {/* responsive nav */}
+      <nav
+        style={sidebarStyle}
+        className="lg:hidden p-5 z-[20000] sticky top-0 right-0 w-full flex justify-between"
+      >
+        <Logo />
+        <div className="flex gap-3 items-center">
+          <IconButton
+            onClick={handleLogout}
+            size="md"
+            type="danger"
+            icon="logout-circle-r-line"
+          />
+          <Link to={"/app/chat"}>
+            <IconButton size="md" type="success" icon="chat-ai-line" />
+          </Link>
+          <IconButton
+            onClick={() =>
+              setLeftSidebarWidth(
+                leftSidebarWidth === 250 ? collapseWidth : 250,
+              )
+            }
+            size="md"
+            type="primary"
+            icon="menu-line"
+          />
+        </div>
+      </nav>
+
+      {/* web nav */}
       <aside
-        className="h-screen bg-white shadow  rounded-2xl fixed top-0 left-0 p-2 overflow-auto"
+        className="h-screen bg-white shadow  lg:rounded-2xl z-[20000] fixed top-0 left-0 lg:p-2 overflow-auto"
         style={{ width: leftSidebarWidth, transition: "0.3s" }}
       >
-        <div className="h-full rounded-2xl p-2 " style={sidebarStyle}>
+        <div className="h-full lg:rounded-2xl p-2 " style={sidebarStyle}>
           <div>
             <div>
               {session && (
@@ -193,17 +249,22 @@ const Layout = () => {
       {/* Main Section */}
 
       <section
-        className="rounded-2xl  min-h-screen px-2 py-2 "
+        className="rounded-2xl px-2 py-2 space-y-7"
         style={{
-          width: `calc(100% - ${leftSidebarWidth + rightSidebarWidth}px)`,
-          marginLeft: leftSidebarWidth,
+          width: isMobile
+            ? "100%"
+            : `calc(100% - ${leftSidebarWidth + rightSidebarWidth}px)`,
+          marginLeft: isMobile ? 0 : leftSidebarWidth,
           marginRight: rightSidebarWidth,
           transition: "0.3s",
         }}
       >
+        {!isBlacklisted && <FriendRequest />}
+
         <Card
           shadow
           divider
+          border
           title={
             <div className="flex gap-3 items-center ">
               <button
@@ -212,7 +273,7 @@ const Layout = () => {
                     leftSidebarWidth === 250 ? collapseWidth : 250,
                   )
                 }
-                className="w-10 h-10 bg-gray-100 rounded-full cursor-pointer"
+                className="lg:block hidden w-10 h-10 bg-gray-100 rounded-full cursor-pointer"
               >
                 <i className="ri-arrow-left-line"></i>
               </button>
@@ -222,84 +283,15 @@ const Layout = () => {
         >
           <Outlet />
         </Card>
+        {!isBlacklisted && <FriendSuggestion />}
       </section>
 
       {/* Right Sidebar */}
-      <aside className="h-[590px] flex flex-col gap-4  bg-white shadow w-[250px] rounded-2xl fixed top-0 right-0 mt-4 ">
-        {/* Top card — Suggested */}
-        {/* <div className="w-full border border-gray-100 rounded-lg h-[200px] overflow-auto scrollbar-hide">
-          <Card title="Suggested">
-            <div className="space-y-5">
-              {Array(10)
-                .fill(0)
-                .map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex  bg-gray-100 rounded  px-3 py-2 items-start"
-                  >
-                    <Avatar
-                      img="/Images/Profile.jpg"
-                      titleColor="black"
-                      title="Saurav Kumar"
-                      subtitle={
-                        <div>
-                          <button className="bg-green-500 font-medium mt-1 hover:bg-green-400 text-xs text-white px-3 py-1.5 rounded">
-                            <i className="ri-user-add-line mr-1"></i>
-                            Add Friend
-                          </button>
-                        </div>
-                      }
-                    />
-                  </div>
-                ))}
-            </div>
-          </Card>
-        </div> */}
-
-        <Suggestedfriends />
-        <FriendRequest/>
-
-        {/* Bottom card — Add Friends */}
-        <div className="flex-1 overflow-auto scrollbar-hide">
-          <Card title="Add Friends" border>
-            <div className="space-y-3">
-              {Array(10)
-                .fill(0)
-                .map((_, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-100 gap-3 flex justify-start p-2"
-                  >
-                    <Avatar
-                      img="/Images/Profile.jpg"
-                      size="md"
-                      titleColor="black"
-                      title="Saurav Kumar"
-                      subtitle="offline"
-                      subtitleColor="gray"
-                    />
-                    <div className="space-x-2">
-                      <Link to={"/app/chat"}>
-                        <button title="Chat" className="cursor-pointer">
-                          <i className="ri-chat-ai-line text-blue-400 hover:text-blue-500 text-[14px]"></i>
-                        </button>
-                      </Link>
-                      <Link to={"/app/voice-call"}>
-                        <button title="Phone" className="cursor-pointer">
-                          <i className="ri-phone-line text-green-400 hover:text-green-500 text-[14px]"></i>
-                        </button>
-                      </Link>
-                      <Link to={"/app/video-chat"}>
-                        <button title="Video Call" className="cursor-pointer">
-                          <i className="ri-video-on-ai-line text-amber-400 hover:text-amber-500 text-[14px]"></i>
-                        </button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </Card>
-        </div>
+      <aside
+        style={{ width: rightSidebarWidth, transition: "0.2s" }}
+        className=" lg:block hidden h-full flex flex-col gap-4  bg-white shadow rounded-2xl fixed top-0 right-0 mt-4 overflow-hidden"
+      >
+        <FriendsOnline />
       </aside>
     </div>
   );

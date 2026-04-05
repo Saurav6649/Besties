@@ -21,21 +21,22 @@ const Post = () => {
                 <div className="flex justify-between items-center">
                   <p>Jan 2, 2030 07:30 Pm</p>
                   <div className="flex items-center gap-2">
-                    <IconButton type="success" icon="edit-fill"></IconButton>
+                    <IconButton size="md" type="success" icon="edit-fill"></IconButton>
                     <IconButton
+                     size="md"
                       type="danger"
                       icon="delete-bin-4-line"
                     ></IconButton>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <IconButton type="primary" icon="thumb-up-line">
+                  <IconButton size="md" type="primary" icon="thumb-up-line">
                     20K
                   </IconButton>
-                  <IconButton type="secondary" icon="thumb-down-line">
+                  <IconButton size="md" type="secondary" icon="thumb-down-line">
                     20K
                   </IconButton>
-                  <IconButton type="danger" icon="chat-ai-line">
+                  <IconButton size="md" type="danger" icon="chat-ai-line">
                     20K
                   </IconButton>
                 </div>
