@@ -249,21 +249,20 @@ const Layout = () => {
       {/* Main Section */}
 
       <section
-        className="rounded-2xl px-2 py-2 space-y-7"
+        className="rounded-2xl px-2 py-2 flex flex-col lg:flex-row gap-7"
         style={{
-          width: isMobile
-            ? "100%"
-            : `calc(100% - ${leftSidebarWidth + rightSidebarWidth}px)`,
+          width: isMobile ? "100%" : `calc(100% - ${leftSidebarWidth}px)`,
           marginLeft: isMobile ? 0 : leftSidebarWidth,
           marginRight: rightSidebarWidth,
           transition: "0.3s",
         }}
       >
-        {!isBlacklisted && <FriendRequest />}
+        {/* {!isBlacklisted && <FriendRequest />} */}
 
         <Card
           shadow
           divider
+          width
           border
           title={
             <div className="flex gap-3 items-center ">
@@ -283,16 +282,21 @@ const Layout = () => {
         >
           <Outlet />
         </Card>
-        {!isBlacklisted && <FriendSuggestion />}
-      </section>
+        {/* {!isBlacklisted && <FriendSuggestion />} */}
 
-      {/* Right Sidebar */}
-      <aside
-        style={{ width: rightSidebarWidth, transition: "0.2s" }}
-        className=" lg:block hidden h-full flex flex-col gap-4  bg-white shadow rounded-2xl fixed top-0 right-0 mt-4 overflow-hidden"
-      >
-        <FriendsOnline />
-      </aside>
+        {/* Right Sidebar */}
+        <aside
+          className={` w-full 
+          lg:w-62.5 
+          flex flex-col gap-4 
+          bg-white shadow rounded-2xl 
+          mt-4 overflow-hidden
+
+          lg:fixed lg:top-0 lg:right-0 lg:h-full`}
+        >
+          <FriendsOnline />
+        </aside>
+      </section>
     </div>
   );
 };

@@ -9,7 +9,7 @@ const FriendsOnline = () => {
   const { session } = useContext(Context);
 
   const onlineHandler = (user: any) => {
-    console.log(user);
+    // console.log(user);
     return setOnlineUser(user);
   };
 
@@ -60,7 +60,7 @@ const FriendsOnline = () => {
 
                   {/* RIGHT: Actions */}
                   <div className="flex items-center gap-2">
-                    <Link to={`/app/chat/`}>
+                    <Link to={`/app/chat/${item.id}`}>
                       <button title="Chat" className="cursor-pointer">
                         <i className="ri-chat-ai-line text-blue-400 hover:text-blue-500 text-sm"></i>
                       </button>

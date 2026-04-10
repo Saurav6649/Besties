@@ -7,6 +7,7 @@ interface CardInterface {
   divider?: boolean;
   border?: boolean;
   shadow?: boolean;
+  width?: boolean;
 }
 
 const Card: FC<CardInterface> = ({
@@ -16,12 +17,14 @@ const Card: FC<CardInterface> = ({
   divider = false,
   border = false,
   shadow = false,
+  width = false,
 }) => {
   return (
     <div
       className={[
-        "p-2 rounded-lg space-y-2 bg-white overflow-y-auto overflow-x-hidden",
+        "p-2 rounded-lg space-y-2 bg-white overflow-y-auto overflow-x-hidden ",
         shadow && "shadow-lg",
+        width && "w-full",
         border && "border border-gray-100",
       ]
         .filter(Boolean)
