@@ -66,13 +66,13 @@ const FriendsOnline = () => {
                       </button>
                     </Link>
 
-                    <Link to={"/app/voice-call"}>
+                    <Link to={`/app/voice-call/${item.id}`}>
                       <button title="Phone" className="cursor-pointer">
                         <i className="ri-phone-line text-green-400 hover:text-green-500 text-sm"></i>
                       </button>
                     </Link>
 
-                    <Link to={"/app/video-chat"}>
+                    <Link to={`/app/video-chat/${item.id}`}>
                       <button title="Video Call" className="cursor-pointer">
                         <i className="ri-video-on-ai-line text-amber-400 hover:text-amber-500 text-sm"></i>
                       </button>

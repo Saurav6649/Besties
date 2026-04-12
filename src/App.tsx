@@ -1,5 +1,5 @@
 import { Route, Routes } from "react-router-dom";
-import 'font-awesome/css/font-awesome.min.css'
+import "font-awesome/css/font-awesome.min.css";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -35,9 +35,9 @@ const App = () => {
               <Route index element={<Dashboard />} />
               <Route path="posts" element={<Post />} />
               <Route path="friends" element={<FriendList />} />
-              <Route path="video-chat" element={<Videochat />} />
+              <Route path="video-chat/:id" element={<Videochat />} />
               <Route path="chat/:id" element={<Chat />} />
-              <Route path="voice-call" element={<Voicecall />} />
+              <Route path="voice-call/:id" element={<Voicecall />} />
             </Route>
           </Route>
 
