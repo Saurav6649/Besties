@@ -14,15 +14,26 @@ import Notfound from "./components/Notfound";
 import { ToastContainer } from "react-toastify";
 import Guard from "./guards/Guard";
 import { useState } from "react";
-import Context, { type SessionType } from "./Context";
+import Context from "./Context";
 import RedirectGuard from "./guards/RedirectGuard";
 import FriendList from "./components/app/friend/FriendList";
 
 const App = () => {
-  const [session, setSession] = useState<SessionType | null | false>(null);
+  const [session, setSession] = useState(null);
+  const [liveActiveSession, setLiveActiveSession] = useState(null);
+  const [sdp, setSdp] = useState(null);
   return (
     <>
-      <Context.Provider value={{ session, setSession }}>
+      <Context.Provider
+        value={{
+          session,
+          setSession,
+          liveActiveSession,
+          setLiveActiveSession,
+          sdp,
+          setSdp,
+        }}
+      >
         <Routes>
           <Route path="/" element={<Home />} />
           <Route element={<RedirectGuard />}>

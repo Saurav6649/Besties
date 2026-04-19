@@ -4,11 +4,28 @@ import Button from "../shared/Button";
 import Context from "../../Context";
 import { toast } from "react-toastify";
 import socket from "../lib/socket";
-import { useParams } from "react-router-dom";
-import { notification } from "antd";
+import { useNavigate, useParams } from "react-router-dom";
+import { Modal, notification } from "antd";
+import SmallButton from "../shared/SmallButton";
+import HttpInterceptor from "../lib/HttpInterceptor";
+
+export interface OnOfferInterface {
+  offer: RTCSessionDescriptionInit;
+  from: any;
+}
+
+interface OnAnswerInterface {
+  answer: RTCSessionDescriptionInit;
+  from: string;
+}
+
+interface IceCandidateInterface {
+  candidate: RTCIceCandidate;
+  from: string;
+}
 
 const Videochat = () => {
-  const { session } = useContext(Context);
+  const { session, liveActiveSession, sdp, setSdp } = useContext(Context);
   const { id } = useParams();
   const [notify, notifyUi] = notification.useNotification();
 
@@ -19,13 +36,60 @@ const Videochat = () => {
   const localStreamRef = useRef<MediaStream | null>(null);
   // const rtcRef = useRef<PeerConnection | null>(null);
   const rtcRef = useRef<RTCPeerConnection | null>(null);
+  const audio = useRef<HTMLAudioElement | null>(null);
+
+  type callType = "pending" | "calling" | "incoming" | "talking" | "end";
+  type AudioSrcType = "/sound/Calling.mp3" | "/sound/end.mp3";
+
+  function formatCallTime(seconds: number): string {
+    const hrs = Math.floor(seconds / 3600)
+      .toString()
+      .padStart(2, "0");
+    const mins = Math.floor((seconds % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = (seconds % 60).toString().padStart(2, "0");
+
+    return `${hrs}:${mins}:${secs}`;
+  }
 
   const [isLocalVideoSharing, setIsLocalVideoSharing] = useState(false);
   const [isLocalScreenSharing, setIsLocalScreenSharing] = useState(false);
   const [isMic, setIsMic] = useState(false);
+  const [status, setStatus] = useState<callType>("pending");
+  const [timer, setTimer] = useState(0);
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const config = {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  };
+
+  const stopAudio = () => {
+    if (!audio.current) return;
+
+    const player = audio.current;
+    player.pause();
+    player.currentTime = 0;
+  };
+
+  const playAudio = (src: AudioSrcType, loop: boolean = false) => {
+    // ✅ always stop previous
+    if (audio.current) {
+      audio.current.pause();
+      audio.current.currentTime = 0;
+    }
+
+    // ✅ always create new audio (IMPORTANT)
+    const player = new Audio(src);
+    player.loop = loop;
+
+    audio.current = player;
+
+    player
+      .play()
+      .then(() => console.log("🔊 Playing:", src))
+      .catch((err) => console.log("❌ Audio blocked:", err));
   };
 
   const toggleVideo = async () => {
@@ -94,7 +158,6 @@ const Videochat = () => {
   const toggleScreen = async () => {
     try {
       const localVideo = localVideoRef.current;
-
       if (!localVideo) return;
 
       if (!isLocalScreenSharing) {
@@ -102,21 +165,75 @@ const Videochat = () => {
           video: true,
         });
 
+        // ✅ FIX 1: correct track
+        const shareScreenTrack = stream.getVideoTracks()[0];
+
+        const sendVideoTrack = rtcRef.current
+          ?.getSenders()
+          .find((s) => s.track?.kind === "video");
+
+        if (shareScreenTrack && sendVideoTrack) {
+          await sendVideoTrack.replaceTrack(shareScreenTrack);
+        }
+
         localVideo.srcObject = stream;
         localStreamRef.current = stream;
         setIsLocalScreenSharing(true);
+
+        // ✅ detect screen sharing off (browser button)
+        shareScreenTrack.onended = async () => {
+          console.log("🛑 screen stopped");
+
+          setIsLocalScreenSharing(false);
+
+          // ✅ FIX 2: camera wapas lao
+          const videoCamStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+
+          const videoTrack = videoCamStream.getVideoTracks()[0];
+
+          const senderTrack = rtcRef.current
+            ?.getSenders()
+            .find((s) => s.track?.kind === "video");
+
+          if (videoTrack && senderTrack) {
+            await senderTrack.replaceTrack(videoTrack);
+          }
+
+          localVideo.srcObject = videoCamStream;
+          localStreamRef.current = videoCamStream;
+          setIsLocalVideoSharing(true);
+        };
       } else {
         const localStream = localStreamRef.current;
-
         if (!localStream) return;
 
-        // here we check the track and stop it and release the data 
-        localStream.getTracks().forEach((track) => {
-          track.stop();
+        // stop screen tracks
+        localStream.getTracks().forEach((track) => track.stop());
+
+        // ✅ FIX 3: camera wapas lao manually bhi
+        const videoCamStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
         });
-        localVideo.srcObject = null;
-        localVideoRef.current = null;
+
+        const videoTrack = videoCamStream.getVideoTracks()[0];
+
+        const senderTrack = rtcRef.current
+          ?.getSenders()
+          .find((s) => s.track?.kind === "video");
+
+        if (videoTrack && senderTrack) {
+          await senderTrack.replaceTrack(videoTrack);
+        }
+
+        localVideo.srcObject = videoCamStream;
+        localStreamRef.current = videoCamStream;
+
         setIsLocalScreenSharing(false);
+
+        // ❌ REMOVE THIS (IMPORTANT)
+        // localVideoRef.current = null;
       }
     } catch (err) {
       Catcherr(err);
@@ -147,8 +264,10 @@ const Videochat = () => {
     }
   };
 
-  const webrtcConnection = () => {
-    rtcRef.current = new RTCPeerConnection(config);
+  const webrtcConnection = async () => {
+    const { data } = await HttpInterceptor.get("/twilio/turn-server");
+
+    rtcRef.current = new RTCPeerConnection({ iceServers: data });
 
     const localStream = localStreamRef.current;
 
@@ -156,15 +275,71 @@ const Videochat = () => {
 
     // const rtcRef.current = rtcRef.currentRef.current;
     rtcRef.current.onicecandidate = (e) => {
-      console.log(e.candidate); //here we find connected user ip and port
+      //here we find connected user ip and port
+
+      if (e.candidate) {
+        socket.emit("candidate", { candidate: e.candidate, to: id });
+      }
     };
 
     rtcRef.current.onconnectionstatechange = () => {
       console.log(rtcRef.current?.connectionState); // check how many user are connected
     };
 
-    rtcRef.current.ontrack = () => {
-      console.log("something is comming from remote user");
+    rtcRef.current.ontrack = (e) => {
+      const remoteStream = e.streams[0];
+      const remoteVideo = remoteVideoRef.current;
+
+      if (!remoteVideo) return;
+      // if (!remoteStream || !remoteVideo) return;
+
+      remoteVideo.srcObject = remoteStream;
+
+      // const videoTrack = remoteStream.getVideoTracks()[0];
+      // if (videoTrack) {
+      //   videoTrack.onmute = () => {
+      //     console.log("video off ------------------------");
+      //     remoteVideo.srcObject = null;
+      //     remoteVideo.style.display = "none";
+      //   };
+
+      //   videoTrack.onunmute = () => {
+      //     console.log("video on ------------------------");
+      //     remoteVideo.srcObject = remoteStream
+      //     remoteVideo.style.display = "block";
+      //   };
+
+      //   videoTrack.onended = () => {
+      //     remoteVideo.srcObject = null;
+      //     remoteVideo.style.display = "none";
+      //   };
+      // }
+
+      const videoTrack = remoteStream.getVideoTracks()[0];
+
+      if (videoTrack) {
+        const updateVideoState = () => {
+          if (!videoTrack.enabled) {
+            console.log("video off");
+
+            remoteVideo.srcObject = null;
+            remoteVideo.style.display = "none";
+          } else {
+            console.log("video on");
+
+            remoteVideo.srcObject = remoteStream;
+            remoteVideo.style.display = "block";
+          }
+        };
+
+        // initial check
+        updateVideoState();
+
+        videoTrack.onended = () => {
+          remoteVideo.srcObject = null;
+          remoteVideo.style.display = "none";
+        };
+      }
     };
 
     localStream.getTracks().forEach((track) => {
@@ -174,46 +349,313 @@ const Videochat = () => {
 
   const StartCall = async () => {
     try {
+      console.log("📞 StartCall clicked"); // ✅ DEBUG
+
       if (!isLocalVideoSharing && !isLocalScreenSharing) {
         toast.error("please start video first ", { position: "top-center" });
       }
 
-      webrtcConnection();
+      await webrtcConnection();
 
       if (!rtcRef.current) return;
 
-      const offer = await rtcRef.current.createOffer(); //create offer and sdp to user 2
+      // 1. create offer
+      const offer = await rtcRef.current.createOffer();
       await rtcRef.current.setLocalDescription(offer);
-      socket.emit("offer", { offer, to: id });
+
+      setStatus("calling");
+      playAudio("/sound/Calling.mp3", true);
+
+      // 🔥 PLAY SOUND HERE (user interaction fix)
+      if (!audio.current) {
+        audio.current = new Audio("/sound/Calling.mp3");
+        audio.current.loop = true;
+        console.log("🎵 Audio created in StartCall");
+      }
+
+      audio.current
+        .play()
+        .then(() => console.log("🔊 Playing from StartCall"))
+        .catch((err) => console.log("❌ Audio blocked:", err));
+
+      notify.open({
+        title: <h1 className="capitalize">{liveActiveSession.fullname}</h1>,
+        description: "Calling....",
+        duration: 30,
+        placement: "bottomRight",
+        onClose: stopAudio,
+        actions: [
+          <div key="calls">
+            <Button
+              key="calls"
+              onClick={endCallFromLocal}
+              icon="phone-fill"
+              type="danger"
+            >
+              End Call
+            </Button>
+          </div>,
+        ],
+      });
+
+      // 2. send offer via signaling
+      socket.emit("offer", { offer, to: id, from: session });
     } catch (err) {
       Catcherr(err);
     }
   };
 
-  const EndCall = () => {
-    try {
-      alert("end call");
-    } catch (err) {
-      Catcherr(err);
-    }
-  };
+  const onOffer = (payload: OnOfferInterface) => {
+    console.log("📩 Incoming offer:", payload); // ✅ DEBUG
 
-  const onOffer = (payload: any) => {
-    // console.log(payload);
+    setStatus("incoming");
+
+    // 🔥 play sound for incoming
+    if (!audio.current) {
+      audio.current = new Audio("/sound/Calling.mp3");
+      audio.current.loop = true;
+      console.log("🎵 Audio created in Incoming");
+    }
+
+    audio.current
+      .play()
+      .then(() => console.log("🔊 Incoming sound playing"))
+      .catch((err) => console.log("❌ Audio blocked:", err));
+
     notify.open({
-      message: "Er Saurav",
+      title: payload.from.fullname,
       description: "Incoming Call",
       duration: 30,
+      actions: [
+        <div key="calls">
+          <SmallButton
+            onClick={() => accept(payload)}
+            icon="phone-fill"
+            type="success"
+          >
+            Accept
+          </SmallButton>
+          ,
+          <SmallButton
+            onClick={endCallFromLocal}
+            icon="phone-fill"
+            type="danger"
+          >
+            End Call
+          </SmallButton>
+        </div>,
+      ],
     });
+  };
+
+  const accept = async (payload: OnOfferInterface) => {
+    try {
+      setSdp(null);
+
+      await webrtcConnection();
+
+      if (!rtcRef.current) return;
+
+      const offer = new RTCSessionDescription(payload.offer);
+      await rtcRef.current.setRemoteDescription(offer);
+
+      const answer = await rtcRef.current.createAnswer(); // it gives sdp means user accpet kar ke loged data dega
+      await rtcRef.current.setLocalDescription(answer);
+
+      notify.destroy();
+      setStatus("talking");
+      stopAudio();
+
+      socket.emit("answer", { answer, to: id });
+    } catch (err) {
+      Catcherr(err);
+    }
+  };
+
+  const endStreaming = () => {
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+  };
+
+  const redirectOnCallEnd = () => {
+    setOpen(false);
+    navigate("/app");
+  };
+
+  const endCallFromLocal = () => {
+    try {
+      setStatus("end");
+
+      playAudio("/sound/end.mp3", false); // ✅ loop false
+
+      socket.emit("end", { to: id });
+      notify.destroy();
+      endStreaming();
+      setOpen(true);
+    } catch (err) {
+      Catcherr(err);
+    }
+  };
+
+  const onEndCallRemote = () => {
+    setStatus("end");
+
+    playAudio("/sound/end.mp3", false); // ✅ loop false
+
+    notify.destroy();
+    endStreaming();
+    setOpen(true);
+  };
+
+  // 3 connect user by onCadidate function
+  const onCandidate = async (payload: IceCandidateInterface) => {
+    try {
+      if (!rtcRef.current) return;
+
+      const candidate = new RTCIceCandidate(payload.candidate);
+      await rtcRef.current.addIceCandidate(candidate);
+    } catch (err) {
+      Catcherr(err);
+    }
+  };
+
+  const OnAnswer = async (payload: OnAnswerInterface) => {
+    try {
+      if (!rtcRef.current) return;
+
+      const answer = await new RTCSessionDescription(payload.answer);
+      await rtcRef.current.setRemoteDescription(answer);
+
+      setStatus("talking");
+      formatCallTime(timer);
+      stopAudio();
+
+      notify.destroy();
+    } catch (err) {
+      Catcherr(err);
+    }
   };
 
   useEffect(() => {
     socket.on("offer", onOffer);
+    socket.on("candidate", onCandidate);
+    socket.on("answer", OnAnswer);
+    socket.on("end", onEndCallRemote);
 
     return () => {
       socket.on("offer", onOffer);
+      socket.off("candidate", onCandidate);
+      socket.off("answer", OnAnswer);
+      socket.on("end", onEndCallRemote);
     };
   }, []);
+
+  useEffect(() => {
+    let interval: any;
+
+    if (status === "talking") {
+      interval = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    }
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [status]);
+
+  // // useEffect(() => {
+  // //   if (status === "pending") return;
+
+  // //   if (!audio.current) return;
+
+  // //   audio.current = new Audio();
+
+  // //   if (status === "calling" || status === "incoming") {
+  // //     audio.current.pause();
+  // //     audio.current.src = "/sound/Calling.mp3";
+  // //     // audio.current.src =
+  // //     //   status === "calling" ? "/sound/Calling.mp3" : "/sound/Ringing.mp3";
+  // //     audio.current.currentTime = 0;
+  // //     audio.current.load();
+  // //     audio.current.play();
+  // //   }
+  // // }, []);
+
+  // useEffect(() => {
+  //   console.log("🔥 STATUS CHANGED:", status);
+
+  //   let interval: any;
+
+  //   if (status === "pending") return;
+
+  //   // audio create once
+  //   if (!audio.current) {
+  //     audio.current = new Audio("/sound/Calling.mp3");
+  //     audio.current.loop = true;
+  //   }
+
+  //   if (status === "calling" || status === "incoming") {
+  //     audio.current.currentTime = 0;
+
+  //     audio.current
+  //       .play()
+  //       .catch((err) => console.log("❌ Audio blocked:", err));
+  //   }
+
+  //   // ✅ FIX 1: ONLY talking (remove "end")
+  //   if (status === "talking") {
+  //     audio.current.pause();
+  //     audio.current.currentTime = 0;
+
+  //     // ✅ interval start
+  //     interval = setInterval(() => {
+  //       setTimer((prev) => prev + 1);
+  //     }, 1000);
+  //   }
+
+  //   if (status === "end") {
+  //     audio.current.pause();
+  //     audio.current.currentTime = 0;
+
+  //     const endAudio = new Audio("/sound/end.mp3");
+
+  //     endAudio
+  //       .play()
+  //       .catch((err) => console.log("❌ Audio blocked on end call:", err));
+
+  //     notify.destroy();
+  //   }
+
+  //   return () => {
+  //     // ✅ FIX 2: clear interval
+  //     if (interval) {
+  //       clearInterval(interval);
+  //     }
+
+  //     if (audio.current) {
+  //       audio.current.pause();
+  //       audio.current.currentTime = 0;
+  //     }
+  //   };
+  // }, [status]);
+
+  useEffect(() => {
+    if (!liveActiveSession) {
+      endCallFromLocal();
+    }
+  }, [liveActiveSession]);
+
+  //  detect comming offer
+  useEffect(() => {
+    if (sdp) {
+      notify.destroy();
+      onOffer(sdp);
+    }
+  }, [sdp]);
 
   return (
     <div className="p-2 space-y-6">
@@ -297,14 +739,36 @@ const Videochat = () => {
           </button>
         </div>
         <div className="flex items-center gap-4">
-          <Button onClick={StartCall} icon="phone-fill" type="success">
-            Call
-          </Button>
-          <Button onClick={EndCall} icon="close-circle-line" type="danger">
-            End
-          </Button>
+          {status === "talking" && <label>{formatCallTime(timer)}</label>}
+
+          {(status === "pending" || status === "end") && (
+            <Button onClick={StartCall} icon="phone-fill" type="success">
+              Call
+            </Button>
+          )}
+
+          {status === "talking" && (
+            <Button
+              onClick={endCallFromLocal}
+              icon="close-circle-line"
+              type="danger"
+            >
+              End
+            </Button>
+          )}
         </div>
       </div>
+      <Modal open={open} centered footer onCancel={redirectOnCallEnd}>
+        <div className="space-y-2 text-center">
+          <h1 className="text-2xl font-semibold">Call Ended</h1>
+          <button
+            onClick={redirectOnCallEnd}
+            className="text-white font-semibold bg-red-600 px-3 py-2 rounded-lg cursor-pointer"
+          >
+            Thank You
+          </button>
+        </div>
+      </Modal>
       {notifyUi}
     </div>
   );

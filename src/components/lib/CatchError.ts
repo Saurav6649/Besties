@@ -6,7 +6,7 @@ export const Catcherr = (
   position: ToastPosition = "top-center",
 ) => {
   if (axios.isAxiosError(err)) {
-    return toast.error(err.response?.data.message, { position });
+    return toast.error(err.response?.data.message || err.message, { position });
   }
 
   if (err instanceof Error) {

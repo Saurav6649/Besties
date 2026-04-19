@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Card from "../../shared/Card";
 import { useContext, useEffect, useState } from "react";
 import socket from "../../lib/socket";
@@ -6,11 +6,17 @@ import Context from "../../../Context";
 
 const FriendsOnline = () => {
   const [onlineUser, setOnlineUser] = useState([]);
-  const { session } = useContext(Context);
+  const { session, setLiveActiveSession } = useContext(Context);
+  const navigate = useNavigate();
 
   const onlineHandler = (user: any) => {
     // console.log(user);
     return setOnlineUser(user);
+  };
+
+  const generateActiveSession = (url: string, user: any) => {
+    setLiveActiveSession(user);
+    navigate(url);
   };
 
   useEffect(() => {
@@ -60,23 +66,47 @@ const FriendsOnline = () => {
 
                   {/* RIGHT: Actions */}
                   <div className="flex items-center gap-2">
-                    <Link to={`/app/chat/${item.id}`}>
-                      <button title="Chat" className="cursor-pointer">
-                        <i className="ri-chat-ai-line text-blue-400 hover:text-blue-500 text-sm"></i>
-                      </button>
-                    </Link>
+                    <button
+                      title="Chat"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        generateActiveSession(`/app/chat/${item.id}`, item)
+                      }
+                    >
+                      <i className="ri-chat-ai-line text-blue-400 hover:text-blue-500 text-sm"></i>
+                    </button>
+                    {/* <Link to={`/app/chat/${item.id}`}>
+                    </Link> */}
 
-                    <Link to={`/app/voice-call/${item.id}`}>
-                      <button title="Phone" className="cursor-pointer">
-                        <i className="ri-phone-line text-green-400 hover:text-green-500 text-sm"></i>
-                      </button>
-                    </Link>
+                    <button
+                      title="Phone"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        generateActiveSession(
+                          `/app/voice-call/${item.id}`,
+                          item,
+                        )
+                      }
+                    >
+                      <i className="ri-phone-line text-green-400 hover:text-green-500 text-sm"></i>
+                    </button>
+                    {/* <Link to={`/app/voice-call/${item.id}`}>
+                    </Link> */}
 
-                    <Link to={`/app/video-chat/${item.id}`}>
-                      <button title="Video Call" className="cursor-pointer">
-                        <i className="ri-video-on-ai-line text-amber-400 hover:text-amber-500 text-sm"></i>
-                      </button>
-                    </Link>
+                    <button
+                      title="Video Call"
+                      className="cursor-pointer"
+                      onClick={() =>
+                        generateActiveSession(
+                          `/app/video-chat/${item.id}`,
+                          item,
+                        )
+                      }
+                    >
+                      <i className="ri-video-on-ai-line text-amber-400 hover:text-amber-500 text-sm"></i>
+                    </button>
+                    {/* <Link to={`/app/video-chat/${item.id}`}>
+                    </Link> */}
                   </div>
                 </div>
               ))}

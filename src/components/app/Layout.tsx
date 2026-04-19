@@ -4,6 +4,7 @@ import {
   Outlet,
   useLocation,
   useNavigate,
+  useParams,
 } from "react-router-dom";
 
 import Avatar from "../shared/Avatar";
@@ -16,23 +17,33 @@ import { v4 as uuid } from "uuid";
 import useSWR, { mutate } from "swr";
 import Fetcher from "../lib/Fetcher";
 import { Catcherr } from "../lib/CatchError";
-import FriendSuggestion from "./friend/FriendSuggestion";
-import FriendRequest from "./friend/FriendRequest";
 import { useMediaQuery } from "react-responsive";
-import Logo from "../shared/logo";
+import Logo from "../shared/Logo";
 import IconButton from "../shared/Iconbutton";
 import FriendsOnline from "./friend/FriendsOnline";
+import socket from "../lib/socket";
+import type { OnOfferInterface } from "./Videochat";
 
 const Layout = () => {
   const isMobile = useMediaQuery({ query: "(max-width: 1224px)" });
   const EightMinInMs = 8 * 60 * 60 * 1000;
+
+  const params = useParams();
+  const paramsArray = Object.keys(params);
+  console.log("Upar wala params", paramsArray);
 
   const { error } = useSWR("/auth/refreshToken", Fetcher, {
     refreshInterval: EightMinInMs,
     shouldRetryOnError: false,
   });
 
-  const { session, setSession } = useContext(Context);
+  const {
+    session,
+    setSession,
+    liveActiveSession,
+    setLiveActiveSession,
+    setSdp,
+  } = useContext(Context);
   // console.log(session);
 
   const { pathname } = useLocation();
@@ -68,7 +79,7 @@ const Layout = () => {
   ];
 
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(0);
-  const rightSidebarWidth = 250;
+  const rightSidebarWidth = 290;
   const [collapseWidth, setCollapseWidth] = useState(0);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -144,9 +155,53 @@ const Layout = () => {
     }
   };
 
+  const onOffer = (payload: OnOfferInterface) => {
+    setSdp(payload);
+    console.log("incoming offer", payload);
+
+    // ✅ user data store karo (not offer)
+    setLiveActiveSession(payload.from);
+
+    // optionally offer alag store karo (agar chahiye)
+    // setIncomingOffer(payload.offer);
+
+    navigate(`/app/video-chat/${payload.from.id}`);
+  };
+
+  useEffect(() => {
+    socket.on("offer", onOffer);
+
+    return () => {
+      socket.off("offer", onOffer);
+    };
+  }, []);
+
   useEffect(() => {
     if (error) handleLogout();
   }, [error]);
+
+  const ActiveSessionUi = () => {
+    if (!liveActiveSession) {
+      navigate("/app");
+      return;
+    }
+
+    return (
+      <div className="flex items-center justify-center  gap-3">
+        <img
+          className={`h-12 w-12 rounded-full`}
+          src={liveActiveSession.image || "/Images/Profile.jpg"}
+          alt=""
+        />
+        <div className="space-y-1 mt-1">
+          <h1 className={`font-medium capitalize text-[16px]/4`}>
+            {liveActiveSession.fullname || "User Name"}
+          </h1>
+          <div className={`text-green-500  text-sm `}>Online</div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen lg:flex ">
@@ -249,7 +304,7 @@ const Layout = () => {
       {/* Main Section */}
 
       <section
-        className="rounded-2xl px-2 py-2 flex flex-col lg:flex-row gap-7"
+        className="rounded-2xl px-2 py-2 flex flex-col lg:flex-row gap-7 "
         style={{
           width: isMobile ? "100%" : `calc(100% - ${leftSidebarWidth}px)`,
           marginLeft: isMobile ? 0 : leftSidebarWidth,
@@ -258,7 +313,6 @@ const Layout = () => {
         }}
       >
         {/* {!isBlacklisted && <FriendRequest />} */}
-
         <Card
           shadow
           divider
@@ -276,21 +330,30 @@ const Layout = () => {
               >
                 <i className="ri-arrow-left-line"></i>
               </button>
-              <h1 className="capitalize">{getPath(pathname)}</h1>
+              <h1 className="capitalize">
+                {paramsArray.length === 0 ? (
+                  getPath(pathname)
+                ) : (
+                  <ActiveSessionUi />
+                )}
+              </h1>
             </div>
           }
         >
           <Outlet />
         </Card>
+        {/* <div className="order-2 lg:order-1">
+        </div> */}
         {/* {!isBlacklisted && <FriendSuggestion />} */}
 
         {/* Right Sidebar */}
         <aside
           className={` w-full 
-          lg:w-62.5 
+          lg:w-72.5 
           flex flex-col gap-4 
           bg-white shadow rounded-2xl 
           mt-4 overflow-hidden
+          order-1 lg:order-2
 
           lg:fixed lg:top-0 lg:right-0 lg:h-full`}
         >

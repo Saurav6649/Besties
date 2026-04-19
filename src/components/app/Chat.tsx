@@ -19,7 +19,6 @@ import { v4 as uuid } from "uuid";
 import HttpInterceptor from "../lib/HttpInterceptor";
 import moment from "moment";
 import SmallButton from "../shared/SmallButton";
-import { toast } from "react-toastify";
 
 interface messageRecievedInterface {
   from: string;
