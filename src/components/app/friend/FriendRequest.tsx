@@ -1,45 +1,67 @@
 import { Swiper, SwiperSlide } from "swiper/react";
+import { FreeMode, Scrollbar } from "swiper/modules";
 
 // Import Swiper styles
 import "swiper/css";
 import Card from "../../shared/Card";
 import SmallButton from "../../shared/SmallButton";
+import useSWR, { mutate } from "swr";
+import Fetcher from "../../lib/Fetcher";
+import { Empty, message, Skeleton } from "antd";
+import { Catcherr } from "../../lib/CatchError";
+import HttpInterceptor from "../../lib/HttpInterceptor";
 
 const FriendRequest = () => {
+  const { data, isLoading, error } = useSWR("/friend/request", Fetcher);
+
+  if (isLoading) return <Skeleton active />;
+
+  if (error) return <Empty />;
+
+  // console.log(data);
+
+  const acceptRequest = async (id: string) => {
+    try {
+      const { data } = await HttpInterceptor.put(`/friend/${id}`, {
+        status: "accepted",
+      });
+      message.success(data.message);
+      mutate("/friend/request");
+      mutate("/friend/");
+    } catch (err) {
+      Catcherr(err);
+    }
+  };
+
   return (
     <Card title="Requests" divider shadow>
       <div className="p-4">
         <Swiper
-          slidesPerView={4}
-          spaceBetween={30}
-          // grabCursor={true}
-          className="mySwiper"
-          breakpoints={{
-            0: {
-              slidesPerView: 2,
-            },
-            640: {
-              slidesPerView: 3,
-            },
-            1024: {
-              slidesPerView: 4,
-            },
-          }}
+          modules={[FreeMode]}
+          freeMode={true}
+          slidesPerView={"auto"}
+          spaceBetween={16}
+          className="!py-4"
         >
-          {Array(10)
-            .fill(0)
-            .map((item, index) => (
-              <SwiperSlide key={index}>
-                <div className="flex flex-col items-center gap-2 border border-gray-200 rounded-2xl p-4">
+          {data.length === 0 && <Empty />}
+          {data &&
+            data.map((item: any, index: number) => (
+              <SwiperSlide key={index} className="!w-[160px]">
+                <div className="flex flex-col items-center gap-3 border border-gray-200 shadow-sm hover:shadow-md transition rounded-2xl p-4 bg-white">
                   <img
-                    src="/Images/Profile.jpg"
-                    alt=""
-                    className="w-[80px] h-[80px] rounded-full object-cover"
+                    src={item.user.image || "/Images/Profile.jpg"}
+                    className="w-[70px] h-[70px] rounded-full object-cover"
                   />
-                  <h1 className="text-black font-medium text-base">
-                    User Name
+
+                  <h1 className="text-black font-medium text-sm text-center">
+                    {item.user.fullname}
                   </h1>
-                  <SmallButton icon="check-double-line" type="danger">
+
+                  <SmallButton
+                    onClick={() => acceptRequest(item._id)}
+                    icon="check-double-line"
+                    type="danger"
+                  >
                     Accept
                   </SmallButton>
                 </div>

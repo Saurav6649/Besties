@@ -89,7 +89,7 @@ const Post = () => {
     }
   };
 
-  console.log("fetch data", data);
+  // console.log("fetch data", data);
 
   return (
     <div className="h-[520px] overflow-auto space-y-6 scrollbar-hide">

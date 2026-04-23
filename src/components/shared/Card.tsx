@@ -22,7 +22,7 @@ const Card: FC<CardInterface> = ({
   return (
     <div
       className={[
-        "p-2 rounded-lg space-y-2 bg-white overflow-y-auto overflow-x-hidden ",
+        "p-2 rounded-lg space-y-2 bg-white overflow-visible ",
         shadow && "shadow-lg",
         width && "w-full",
         border && "border border-gray-100",

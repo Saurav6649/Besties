@@ -30,7 +30,7 @@ const FriendsOnline = () => {
   }, []);
 
   return (
-    <div className="h-screen pb-6 overflow-auto scrollbar-hide">
+    <div className=" pb-6 scrollbar-hide">
       <Card title="Friends Online" border>
         <div className="space-y-3">
           {session &&

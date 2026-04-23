@@ -23,6 +23,8 @@ import IconButton from "../shared/Iconbutton";
 import FriendsOnline from "./friend/FriendsOnline";
 import socket from "../lib/socket";
 import type { OnOfferInterface } from "./Videochat";
+import FriendSuggestion from "./friend/FriendSuggestion";
+import FriendRequest from "./friend/FriendRequest";
 
 const Layout = () => {
   const isMobile = useMediaQuery({ query: "(max-width: 1224px)" });
@@ -30,7 +32,7 @@ const Layout = () => {
 
   const params = useParams();
   const paramsArray = Object.keys(params);
-  console.log("Upar wala params", paramsArray);
+  // console.log("Upar wala params", paramsArray);
 
   const { error } = useSWR("/auth/refreshToken", Fetcher, {
     refreshInterval: EightMinInMs,
@@ -49,7 +51,7 @@ const Layout = () => {
   const { pathname } = useLocation();
 
   const friendsUiBlacklist = [
-    "/app/friends",
+    // "/app/friends",
     "/app/chat",
     "/app/voice-call",
     "/app/video-chat",
@@ -344,20 +346,23 @@ const Layout = () => {
         </Card>
         {/* <div className="order-2 lg:order-1">
         </div> */}
-        {/* {!isBlacklisted && <FriendSuggestion />} */}
 
         {/* Right Sidebar */}
         <aside
-          className={` w-full 
-          lg:w-72.5 
-          flex flex-col gap-4 
-          bg-white shadow rounded-2xl 
-          mt-4 overflow-hidden
-          order-1 lg:order-2
-
-          lg:fixed lg:top-0 lg:right-0 lg:h-full`}
+          className={`w-full 
+    lg:w-72.5 
+    flex flex-col gap-4 
+    bg-white shadow rounded-2xl 
+    mt-4 
+    h-screen 
+    overflow-y-auto overflow-x-hidden
+    
+    order-1 lg:order-2
+    lg:fixed lg:top-0 lg:right-0 lg:h-screen`}
         >
           <FriendsOnline />
+          <FriendRequest />
+          {!isBlacklisted && <FriendSuggestion />}
         </aside>
       </section>
     </div>
