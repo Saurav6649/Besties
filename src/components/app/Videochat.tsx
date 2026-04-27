@@ -12,17 +12,26 @@ import HttpInterceptor from "../lib/HttpInterceptor";
 export interface OnOfferInterface {
   offer: RTCSessionDescriptionInit;
   from: any;
+  type: "audio" | "video" | "chat";
 }
 
-interface OnAnswerInterface {
+export interface OnAnswerInterface {
   answer: RTCSessionDescriptionInit;
   from: string;
 }
 
-interface IceCandidateInterface {
+export interface IceCandidateInterface {
   candidate: RTCIceCandidate;
   from: string;
 }
+
+export type callType = "pending" | "calling" | "incoming" | "talking" | "end";
+export type AudioSrcType =
+  | "/sound/Calling.mp3"
+  | "/sound/Ringing.mp3"
+  | "/sound/end.mp3"
+  | "/sound/busy.mp3"
+  | "/sound/chat.mp3";
 
 const Videochat = () => {
   const { session, liveActiveSession, sdp, setSdp } = useContext(Context);
@@ -37,9 +46,6 @@ const Videochat = () => {
   // const rtcRef = useRef<PeerConnection | null>(null);
   const rtcRef = useRef<RTCPeerConnection | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
-
-  type callType = "pending" | "calling" | "incoming" | "talking" | "end";
-  type AudioSrcType = "/sound/Calling.mp3" | "/sound/end.mp3";
 
   function formatCallTime(seconds: number): string {
     const hrs = Math.floor(seconds / 3600)
@@ -399,14 +405,24 @@ const Videochat = () => {
       });
 
       // 2. send offer via signaling
-      socket.emit("offer", { offer, to: id, from: session });
+      socket.emit("offer", { offer, to: id, from: session, type: "video" });
     } catch (err) {
       Catcherr(err);
     }
   };
 
+  const rejectCall = (payload: OnOfferInterface) => {
+    socket.emit("busy", { to: payload.from.socketId });
+    endCallFromLocal();
+  };
+
   const onOffer = (payload: OnOfferInterface) => {
     console.log("📩 Incoming offer:", payload); // ✅ DEBUG
+
+    if (status === "talking" || status === "calling") {
+      socket.emit("busy", { to: payload.from.socketId }); // 👈 IMPORTANT
+      return;
+    }
 
     setStatus("incoming");
 
@@ -437,7 +453,7 @@ const Videochat = () => {
           </SmallButton>
           ,
           <SmallButton
-            onClick={endCallFromLocal}
+            onClick={() => rejectCall(payload)}
             icon="phone-fill"
             type="danger"
           >
@@ -539,16 +555,31 @@ const Videochat = () => {
     }
   };
 
+  const onBusy = () => {
+    setStatus("pending");
+    playAudio("/sound/busy.mp3");
+    notify.destroy();
+
+    notify.info({
+      message: <h1 className="font-medium">User busy !</h1>,
+      duration: 1,
+      onClose: stopAudio,
+      placement: "bottomRight",
+    });
+  };
+
   useEffect(() => {
     socket.on("offer", onOffer);
     socket.on("candidate", onCandidate);
     socket.on("answer", OnAnswer);
+    socket.on("busy", onBusy);
     socket.on("end", onEndCallRemote);
 
     return () => {
-      socket.on("offer", onOffer);
+      socket.off("offer", onOffer);
       socket.off("candidate", onCandidate);
       socket.off("answer", OnAnswer);
+      socket.off("busy", onBusy);
       socket.on("end", onEndCallRemote);
     };
   }, []);
@@ -690,6 +721,7 @@ const Videochat = () => {
             ref={localVideoRef}
             autoPlay
             playsInline
+            muted
             className="w-full h-full absolute top-0 left-0 object-contain"
           ></video>
           <button className="bg-white/10 capitalize cursor-pointer px-3 py-2 text-xs rounded-lg text-white absolute bottom-5 left-5">

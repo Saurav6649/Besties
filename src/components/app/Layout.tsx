@@ -10,7 +10,7 @@ import {
 import Avatar from "../shared/Avatar";
 import Card from "../shared/Card";
 import Context from "../../Context";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import HttpInterceptor from "../lib/HttpInterceptor";
 import { toast } from "react-toastify";
 import { v4 as uuid } from "uuid";
@@ -22,9 +22,11 @@ import Logo from "../shared/Logo";
 import IconButton from "../shared/Iconbutton";
 import FriendsOnline from "./friend/FriendsOnline";
 import socket from "../lib/socket";
-import type { OnOfferInterface } from "./Videochat";
+import type { AudioSrcType, OnOfferInterface } from "./Videochat";
 import FriendSuggestion from "./friend/FriendSuggestion";
 import FriendRequest from "./friend/FriendRequest";
+import { notification } from "antd";
+import Button from "../shared/Button";
 
 const Layout = () => {
   const isMobile = useMediaQuery({ query: "(max-width: 1224px)" });
@@ -83,6 +85,8 @@ const Layout = () => {
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(0);
   const rightSidebarWidth = 290;
   const [collapseWidth, setCollapseWidth] = useState(0);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [notify, notifyUi] = notification.useNotification();
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
@@ -102,6 +106,33 @@ const Layout = () => {
     const firstPath = path.split("/").pop();
     const finalPath = firstPath?.split("-").join(" ");
     return finalPath;
+  };
+
+  const stopAudio = () => {
+    if (!audio.current) return;
+
+    const player = audio.current;
+    player.pause();
+    player.currentTime = 0;
+  };
+
+  const playAudio = (src: AudioSrcType, loop: boolean = false) => {
+    // ✅ always stop previous
+    if (audio.current) {
+      audio.current.pause();
+      audio.current.currentTime = 0;
+    }
+
+    // ✅ always create new audio (IMPORTANT)
+    const player = new Audio(src);
+    player.loop = loop;
+
+    audio.current = player;
+
+    player
+      .play()
+      .then(() => console.log("🔊 Playing:", src))
+      .catch((err) => console.log("❌ Audio blocked:", err));
   };
 
   const handleProfile = () => {
@@ -167,14 +198,56 @@ const Layout = () => {
     // optionally offer alag store karo (agar chahiye)
     // setIncomingOffer(payload.offer);
 
-    navigate(`/app/video-chat/${payload.from.id}`);
+    if (payload.type === "video")
+      return navigate(`/app/video-chat/${payload.from.id}`);
+
+    if (payload.type === "audio")
+      return navigate(`/app/voice-call/${payload.from.id}`);
+
+    // if (payload.type === "chat")
+    //   return navigate(`/app/chat/${payload.from.id}`);
+  };
+
+  const startChat = (payload: any) => {
+    notify.destroy();
+    setLiveActiveSession(payload.from);
+    navigate(`/app/chat/${payload.from.id}`);
+  };
+
+  const onMessage = (payload: any) => {
+    if (location.href.includes("/app/chat")) return;
+
+    playAudio("/sound/chat.mp3");
+    notify.open({
+      message: (
+        <h1 className="capitalize font-medium">{payload.from.fullname}</h1>
+      ),
+      description: payload.message,
+      duration: 30,
+      onClose: stopAudio,
+      placement: "bottomRight",
+      actions: [
+        <div key="calls">
+          <Button
+            onClick={() => startChat(payload)}
+            key="chat"
+            icon="chat-ai-line"
+            type="success"
+          >
+            Start Chat
+          </Button>
+        </div>,
+      ],
+    });
   };
 
   useEffect(() => {
     socket.on("offer", onOffer);
+    socket.on("message", onMessage);
 
     return () => {
       socket.off("offer", onOffer);
+      socket.off("message", onMessage);
     };
   }, []);
 
@@ -365,6 +438,7 @@ const Layout = () => {
           {!isBlacklisted && <FriendSuggestion />}
         </aside>
       </section>
+      {notifyUi}
     </div>
   );
 };
